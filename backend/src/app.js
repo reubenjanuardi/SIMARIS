@@ -56,10 +56,14 @@ app.use(instanceIdHeader);
 // =============================================================
 app.get('/health', (req, res) => {
   res.status(200).json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    instance: process.env.INSTANCE_ID || 'unknown',
-    environment: process.env.NODE_ENV || 'development',
+    success: true,
+    data: {
+      status:      'OK',
+      instance:    process.env.INSTANCE_ID || 'unknown',
+      timestamp:   new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+      uptime:      process.uptime(),
+    },
   });
 });
 
