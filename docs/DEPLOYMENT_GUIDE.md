@@ -119,12 +119,12 @@ Lakukan SSH login ke kedua instance satu-per-satu, dan jalankan perintah instala
 # Update OS
 sudo apt update && sudo apt upgrade -y
 
-# Instal Node Version Manager (NVM) & Node.js 18
+# Instal Node Version Manager (NVM) & Node.js 20
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-nvm install 18
-nvm use 18
+nvm install 20
+nvm use 20
 
 # Verifikasi Node & NPM
 node -v
@@ -161,7 +161,7 @@ Di masing-masing instance:
    ```
 2. Instal **PM2** secara global untuk menjalankan server di background secara permanen:
    ```bash
-   sudo npm install -m -g pm2
+   npm install -g pm2
    ```
 3. Jalankan aplikasi backend menggunakan PM2 dari folder `backend/`:
    ```bash
@@ -174,17 +174,83 @@ Di masing-masing instance:
    pm2 save
    ```
 
+### Langkah 4.5: Build & Setup Frontend dengan Nginx (Pada Setiap Instance)
+Karena kita menjalankan frontend dan backend di dalam satu server fisik EC2 (monolith), kita akan menggunakan Nginx untuk menyajikan file frontend statis dan meneruskan API request `/api` ke backend Node.js (port 8081).
+
+1. Buka folder frontend di EC2:
+   ```bash
+   cd /home/ubuntu/SIMARIS/frontend
+   ```
+2. Instal dependensi frontend:
+   ```bash
+   npm install
+   ```
+3. Kompilasi frontend statis dengan parameter VITE_API_URL relatif (`/api`):
+   ```bash
+   VITE_API_URL=/api npm run build
+   ```
+4. Instal web server Nginx di server EC2 (ini akan otomatis membuat direktori /var/www/html/):
+   ```bash
+   sudo apt install nginx -y
+   ```
+5. Salin file hasil build statis ke direktori web default Nginx:
+   ```bash
+   sudo cp -r dist/* /var/www/html/
+   ```
+6. Konfigurasi Nginx sebagai reverse proxy. Hapus atau edit konfigurasi default Nginx:
+   ```bash
+   sudo nano /etc/nginx/sites-available/default
+   ```
+   Ganti seluruh isi file tersebut dengan konfigurasi berikut:
+   ```nginx
+   server {
+       listen 80 default_server;
+       listen [::]:80 default_server;
+
+       root /var/www/html;
+       index index.html index.htm;
+
+       server_name _;
+
+       # Serve frontend statis
+       location / {
+           try_files $uri $uri/ /index.html;
+       }
+
+       # Proxy API request ke backend Node.js
+       location /api {
+           proxy_pass http://127.0.0.1:8081;
+           proxy_http_version 1.1;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection 'upgrade';
+           proxy_set_header Host $host;
+           proxy_cache_bypass $http_upgrade;
+       }
+
+       # Proxy health check endpoint ke backend
+       location /health {
+           proxy_pass http://127.0.0.1:8081/health;
+           proxy_http_version 1.1;
+           proxy_set_header Host $host;
+       }
+   }
+   ```
+7. Restart layanan Nginx agar konfigurasi baru dimuat:
+   ```bash
+   sudo systemctl restart nginx
+   ```
+
 ### Langkah 5: Konfigurasi Target Group & Application Load Balancer (ALB)
 1. Buka dashboard **EC2 Console** -> bagian sidebar kiri cari **Load Balancing** -> pilih **Target Groups**.
 2. Klik **Create target group**.
 3. Pilih target type: **Instances**.
-4. **Target group name**: `simaris-backend-tg`.
-5. Protocol: **HTTP**, Port: **8081** (port default backend Node.js).
+4. **Target group name**: `simaris-app-tg`.
+5. Protocol: **HTTP**, Port: **80** (Port Nginx yang menyajikan frontend & mem-proxy backend).
 6. **Health checks**:
    - Protocol: **HTTP**
-   - Path: `/health` (Endpoint ini mengembalikan data instance ID dan status server)
+   - Path: `/health` (Mengarahkan langsung ke endpoint health check Express melalui Nginx)
 7. Klik **Next**.
-8. Centang `simaris-instance-1` dan `simaris-instance-2` di tabel, isi port **8081** di bawahnya, klik **Include as pending below**.
+8. Centang `simaris-instance-1` dan `simaris-instance-2` di tabel, isi port **80** di bawahnya, klik **Include as pending below**.
 9. Klik **Create target group**.
 10. Masuk ke **Load Balancers** -> klik **Create load balancer**.
 11. Pilih **Application Load Balancer** -> klik **Create**.
@@ -192,7 +258,7 @@ Di masing-masing instance:
 13. **Network mapping**: Pilih VPC default Anda dan centang minimal 2 Availability Zones.
 14. **Listeners and routing**:
     - Listener: Protocol **HTTP**, Port **80**.
-    - Forward to: Pilih Target Group `simaris-backend-tg` yang baru saja dibuat.
+    - Forward to: Pilih Target Group `simaris-app-tg` yang baru saja dibuat.
 15. Klik **Create load balancer**.
 
 ---

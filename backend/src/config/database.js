@@ -10,9 +10,20 @@ if (!databaseUrl) {
   throw new Error('DATABASE_URL tidak ditemukan di file .env');
 }
 
+// Deteksi apakah menggunakan AWS RDS (memerlukan koneksi SSL)
+const isRds = databaseUrl.includes('rds.amazonaws.com');
+
 // Buat instance Sequelize menggunakan connection string
 const sequelize = new Sequelize(databaseUrl, {
   dialect: 'postgres',
+
+  // Gunakan SSL jika terhubung ke RDS AWS
+  dialectOptions: isRds ? {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false, // bypass validasi sertifikat CA untuk kemudahan
+    }
+  } : {},
 
   // Matikan logging query SQL di production agar tidak banjir log
   logging: process.env.NODE_ENV === 'production' ? false : console.log,
