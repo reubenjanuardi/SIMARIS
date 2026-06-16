@@ -10,6 +10,7 @@ const {
   create,
   update,
   destroy,
+  getCategories,
 } = require('../controllers/inventaris.controller');
 
 // Import middleware
@@ -27,6 +28,13 @@ const { authenticate, authorize } = require('../middleware/auth.middleware');
  * Akses: semua role (admin, staff, viewer)
  */
 router.get('/', authenticate, getAll);
+
+/**
+ * GET /api/inventaris/categories
+ * Ambil semua kategori barang untuk dropdown.
+ * Akses: semua role (admin, staff, viewer)
+ */
+router.get('/categories', authenticate, getCategories);
 
 /**
  * GET /api/inventaris/:id

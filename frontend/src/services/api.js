@@ -80,12 +80,20 @@ export const authAPI = {
     const response = await api.get('/auth/me');
     return response.data;
   },
+  users: async () => {
+    const response = await api.get('/auth/users');
+    return response.data;
+  },
 };
 
 // 2. INVENTARIS API
 export const inventarisAPI = {
   list: async (params) => {
     const response = await api.get('/inventaris', { params });
+    return response.data;
+  },
+  categories: async () => {
+    const response = await api.get('/inventaris/categories');
     return response.data;
   },
   get: async (id) => {

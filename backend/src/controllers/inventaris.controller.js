@@ -454,4 +454,28 @@ async function destroy(req, res) {
   }
 }
 
-module.exports = { getAll, getById, create, update, destroy };
+// =============================================================
+// GET CATEGORIES
+// Mengembalikan semua kategori barang untuk dropdown.
+// Akses: semua role
+// =============================================================
+async function getCategories(req, res) {
+  try {
+    const categories = await KategoriBarang.findAll({
+      order: [['nama_kategori', 'ASC']],
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: categories,
+    });
+  } catch (error) {
+    console.error('[Inventaris.getCategories]', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Gagal mengambil data daftar kategori barang.',
+    });
+  }
+}
+
+module.exports = { getAll, getById, create, update, destroy, getCategories };

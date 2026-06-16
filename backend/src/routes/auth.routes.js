@@ -9,6 +9,7 @@ const {
   login,
   logout,
   getMe,
+  getAllUsers,
 } = require('../controllers/auth.controller');
 
 // Import middleware autentikasi & otorisasi
@@ -47,5 +48,13 @@ router.post('/logout', authenticate, logout);
  */
 router.get('/me', authenticate, getMe);
 
+/**
+ * GET /api/auth/users
+ * Ambil semua user (hanya field aman) untuk pengisi dropdown PIC.
+ * Akses: Semua user yang sudah login
+ */
+router.get('/users', authenticate, getAllUsers);
+
 module.exports = router;
+
 

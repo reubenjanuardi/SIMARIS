@@ -233,4 +233,29 @@ async function getMe(req, res) {
   }
 }
 
-module.exports = { register, login, logout, getMe };
+// =============================================================
+// GET ALL USERS
+// Mengembalikan semua user (hanya field aman) untuk PIC dropdown.
+// Akses: Semua user yang sudah login
+// =============================================================
+async function getAllUsers(req, res) {
+  try {
+    const users = await User.findAll({
+      attributes: ['id', 'nama', 'username', 'role', 'departemen'],
+      order: [['nama', 'ASC']],
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: users,
+    });
+  } catch (error) {
+    console.error('[Auth.getAllUsers]', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Gagal mengambil data daftar user.',
+    });
+  }
+}
+
+module.exports = { register, login, logout, getMe, getAllUsers };

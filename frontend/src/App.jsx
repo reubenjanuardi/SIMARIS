@@ -47,16 +47,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/inventaris/:id"
-            element={
-              <ProtectedRoute>
-                <MainLayout>
-                  <InventarisDetailPage />
-                </MainLayout>
-              </ProtectedRoute>
-            }
-          />
 
           {/* Form Tambah Inventaris (Hanya Admin dan Staff) */}
           <Route
@@ -65,6 +55,30 @@ function App() {
               <ProtectedRoute allowedRoles={['admin', 'staff']}>
                 <MainLayout>
                   <InventarisFormPage />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Form Edit Inventaris (Hanya Admin dan Staff) */}
+          <Route
+            path="/inventaris/edit/:id"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'staff']}>
+                <MainLayout>
+                  <InventarisFormPage />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Detail Inventaris (Semua Role) - Taruh di paling akhir agar tidak memicu tabrakan rute */}
+          <Route
+            path="/inventaris/:id"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <InventarisDetailPage />
                 </MainLayout>
               </ProtectedRoute>
             }
