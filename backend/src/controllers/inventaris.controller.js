@@ -8,6 +8,7 @@ const {
   ActivityLog,
 }                     = require('../models');
 const { logActivity } = require('../utils/activityLogger');
+const { uploadFileToS3, deleteFileFromS3 } = require('../utils/uploadHelper');
 
 // Atribut User yang aman ditampilkan (tanpa password, tanpa timestamp sensitif)
 const USER_SAFE_ATTRIBUTES = ['id', 'nama', 'username', 'departemen', 'role'];
@@ -478,4 +479,73 @@ async function getCategories(req, res) {
   }
 }
 
-module.exports = { getAll, getById, create, update, destroy, getCategories };
+// =============================================================
+// UPLOAD FOTO — Upload foto barang ke S3 & update database
+// POST /api/inventaris/:id/foto
+// Akses: admin, staff
+// =============================================================
+async function uploadFoto(req, res) {
+  try {
+    const { id } = req.params;
+
+    // 1. Validasi file ada
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Silakan pilih berkas foto terlebih dahulu.',
+      });
+    }
+
+    // 2. Validasi barang ada di database
+    const barang = await Inventaris.findByPk(id);
+    if (!barang) {
+      return res.status(404).json({
+        success: false,
+        message: 'Barang tidak ditemukan.',
+      });
+    }
+
+    // 3. Jika sudah ada foto sebelumnya, hapus foto lama dari S3
+    const fotoLama = barang.foto_barang;
+    if (fotoLama && fotoLama.includes('amazonaws.com')) {
+      await deleteFileFromS3(fotoLama);
+    }
+
+    // 4. Upload foto baru ke S3
+    // Menggunakan helper uploadFileToS3(file, folder)
+    const newFotoUrl = await uploadFileToS3(req.file, 'foto-barang');
+
+    // 5. Update kolom foto_barang di database
+    const nilaiLama = { foto_barang: barang.foto_barang };
+    await barang.update({ foto_barang: newFotoUrl });
+    const nilaiBaru = { foto_barang: newFotoUrl };
+
+    // 6. Catat aktivitas update foto barang
+    await logActivity({
+      userId:             req.user.id,
+      tipeAktivitas:      'UBAH_BARANG',
+      tabelTarget:        'inventaris',
+      idTarget:           barang.id,
+      nilaiLama,
+      nilaiBaru,
+      deskripsiPerubahan: `Foto barang ${barang.nama_barang} diperbarui.`,
+      req,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        foto_barang: newFotoUrl,
+      },
+    });
+
+  } catch (error) {
+    console.error('[Inventaris.uploadFoto] Error:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Gagal memperbarui foto barang. Silakan coba kembali.',
+    });
+  }
+}
+
+module.exports = { getAll, getById, create, update, destroy, getCategories, uploadFoto };

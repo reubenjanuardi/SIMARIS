@@ -112,6 +112,14 @@ export const inventarisAPI = {
     const response = await api.delete(`/inventaris/${id}`);
     return response.data;
   },
+  uploadFoto: async (id, formData) => {
+    const response = await api.post(`/inventaris/${id}/foto`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
 };
 
 // 3. PEMINJAMAN API

@@ -11,10 +11,12 @@ const {
   update,
   destroy,
   getCategories,
+  uploadFoto,
 } = require('../controllers/inventaris.controller');
 
 // Import middleware
 const { authenticate, authorize } = require('../middleware/auth.middleware');
+const uploadMiddleware = require('../middleware/upload.middleware');
 
 // =============================================================
 // INVENTARIS ROUTES — sesuai plan.md section 5
@@ -58,6 +60,14 @@ router.post('/', authenticate, authorize('admin', 'staff'), create);
  * Akses: admin, staff
  */
 router.put('/:id', authenticate, authorize('admin', 'staff'), update);
+
+/**
+ * POST /api/inventaris/:id/foto
+ * Upload/perbarui foto barang ke AWS S3.
+ * Mencatat log UBAH_BARANG.
+ * Akses: admin, staff
+ */
+router.post('/:id/foto', authenticate, authorize('admin', 'staff'), uploadMiddleware, uploadFoto);
 
 /**
  * DELETE /api/inventaris/:id

@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { inventarisAPI, authAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import ImageUpload from '../../components/common/ImageUpload';
 
 const InventarisFormPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { instanceId } = useAuth();
   const isEditMode = !!id;
+
+  const [successBanner, setSuccessBanner] = useState('');
 
   // State Form Fields
   const [formData, setFormData] = useState({
@@ -31,11 +35,19 @@ const InventarisFormPage = () => {
   const [users, setUsers] = useState([]);
 
   // UI States
-  const [fileName, setFileName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [validationErrors, setValidationErrors] = useState({});
+
+  // Deteksi redirect dari mode TAMBAH ke EDIT untuk upload foto
+  useEffect(() => {
+    if (location.state && location.state.showUploadMessage) {
+      setSuccessBanner('🎉 Barang inventaris baru berhasil ditambahkan! Silakan lengkapi dengan mengunggah foto barang di kolom yang tersedia di bawah.');
+      // Bersihkan state agar banner tidak muncul lagi saat di-reload
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   // Fetch Dropdowns & Edit Data (jika mode edit)
   useEffect(() => {
@@ -128,22 +140,8 @@ const InventarisFormPage = () => {
     }
   };
 
-  // Handle File Upload Simulation
-  // Karena backend mengharapkan data VARCHAR(255) berisi URL S3/lokal,
-  // maka di frontend kita simulasikan upload dengan membuat placeholder URL gambar yang representatif.
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFileName(file.name);
-      
-      // Buat simulasi path URL lokal / S3
-      const fakeUrl = `https://picsum.photos/400/300?random=${Math.floor(Math.random() * 1000)}`;
-      setFormData(prev => ({
-        ...prev,
-        foto_barang: fakeUrl,
-      }));
-    }
-  };
+  // File upload ditangani langsung oleh komponen ImageUpload ketika dalam mode Edit.
+  // Input file disembunyikan saat dalam mode Tambah.
 
   // Validasi Input Sisi Client
   const validateForm = () => {
@@ -214,8 +212,13 @@ const InventarisFormPage = () => {
       }
 
       if (res.success) {
-        alert(isEditMode ? 'Barang inventaris berhasil diperbarui!' : 'Barang inventaris baru berhasil ditambahkan!');
-        navigate('/inventaris');
+        if (isEditMode) {
+          alert('Barang inventaris berhasil diperbarui!');
+          navigate('/inventaris');
+        } else {
+          // Redirect ke mode EDIT agar user bisa upload foto dengan ID yang didapat dari response
+          navigate(`/inventaris/edit/${res.data.id}`, { state: { showUploadMessage: true } });
+        }
       } else {
         setError(res.message || 'Terjadi kesalahan saat menyimpan data.');
       }
@@ -251,6 +254,13 @@ const InventarisFormPage = () => {
           <span>Server Instance: <strong>{instanceId}</strong></span>
         </div>
       </div>
+
+      {/* Tampilan Banner Sukses Redirect */}
+      {successBanner && (
+        <div style={styles.successBannerBox}>
+          {successBanner}
+        </div>
+      )}
 
       {/* Tampilan Error Global */}
       {error && (
@@ -466,25 +476,21 @@ const InventarisFormPage = () => {
 
           <div style={styles.formGroup}>
             <label style={styles.label}>Foto Barang (Optional)</label>
-            <div style={styles.fileInputContainer}>
-              <input
-                type="file"
-                id="foto_file"
-                accept="image/*"
-                onChange={handleFileChange}
-                style={styles.fileInputHidden}
+            {isEditMode ? (
+              <ImageUpload
+                currentImageUrl={formData.foto_barang}
+                onUploadSuccess={(newUrl) => {
+                  setFormData(prev => ({ ...prev, foto_barang: newUrl }));
+                }}
+                inventarisId={id}
+                disabled={isSubmitting}
               />
-              <label htmlFor="foto_file" style={styles.fileInputLabel}>
-                📁 Pilih File Foto
-              </label>
-              <span style={styles.fileNameText}>
-                {fileName || (formData.foto_barang ? 'Foto tersimpan (simulasi)' : 'Belum ada file dipilih')}
-              </span>
-            </div>
-            {formData.foto_barang && (
-              <div style={styles.previewContainer}>
-                <span style={styles.previewLabel}>Preview Simulasi:</span>
-                <img src={formData.foto_barang} alt="Preview" style={styles.previewImage} />
+            ) : (
+              <div style={styles.photoPlaceholderInfo}>
+                <span style={{ fontSize: '18px', marginRight: '8px' }}>ℹ️</span>
+                <span style={{ color: '#718096', fontSize: '13px' }}>
+                  Foto barang dapat diunggah setelah barang disimpan ke database (dalam mode Edit).
+                </span>
               </div>
             )}
           </div>
@@ -756,6 +762,24 @@ const styles = {
     width: '32px',
     height: '32px',
     animation: 'spin 1s linear infinite',
+  },
+  successBannerBox: {
+    backgroundColor: '#f0fdf4',
+    border: '1px solid #bbf7d0',
+    color: '#166534',
+    borderRadius: '8px',
+    padding: '12px 16px',
+    fontSize: '14px',
+    fontWeight: '500',
+    marginBottom: '10px',
+  },
+  photoPlaceholderInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '12px 16px',
+    backgroundColor: '#f8fafc',
+    border: '1px dashed #cbd5e1',
+    borderRadius: '6px',
   },
 };
 
