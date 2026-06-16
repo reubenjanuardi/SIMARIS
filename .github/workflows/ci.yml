@@ -1,0 +1,55 @@
+name: SIMARIS CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    name: Build and Verify Codebase
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout codebase
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # 2. Setup Node.js environment
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      # 3. Install backend dependencies & run check
+      - name: Install Backend Dependencies
+        run: |
+          cd backend
+          npm ci
+
+      # 4. Install frontend dependencies & run check
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      # 5. Build frontend React static files
+      - name: Build Frontend Application
+        run: |
+          cd frontend
+          VITE_API_URL=/api npm run build
+
+      # 6. Test build backend Docker image
+      - name: Build Backend Docker Image
+        run: |
+          docker build -t simaris-backend:latest ./backend
+
+      # 7. Test build frontend Docker image
+      - name: Build Frontend Docker Image
+        run: |
+          docker build -t simaris-frontend:latest ./frontend

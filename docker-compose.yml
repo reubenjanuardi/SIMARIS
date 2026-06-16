@@ -1,0 +1,50 @@
+services:
+  # 1. Database PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: simaris-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: inventory_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+  # 2. Server Backend (Express API)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: simaris-backend
+    ports:
+      - "8081:8081"
+    depends_on:
+      - postgres
+    env_file:
+      - ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/inventory_db
+      - PORT=8081
+      - INSTANCE_ID=docker-backend
+    volumes:
+      - backend_logs:/app/logs
+    restart: always
+
+  # 3. Client Frontend (React SPA on Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: simaris-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  postgres_data:
+  backend_logs:
