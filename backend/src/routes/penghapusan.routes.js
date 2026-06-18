@@ -17,7 +17,7 @@ const { authenticate, authorize } = require('../middleware/auth.middleware');
 // =============================================================
 
 /** GET /api/penghapusan — List semua. Akses: admin */
-router.get('/', authenticate, authorize('admin'), getAll);
+router.get('/', authenticate, authorize('admin', 'staff'), getAll);
 
 /** POST /api/penghapusan — Ajukan penghapusan. Akses: admin, staff */
 router.post('/', authenticate, authorize('admin', 'staff'), create);
