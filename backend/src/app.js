@@ -20,6 +20,9 @@ const dashboardRoutes    = require('./routes/dashboard.routes');
 
 const app = express();
 
+// Ini membuat req.ip membaca dari header X-Forwarded-For yang diset oleh ALB
+app.set('trust proxy', 1);
+
 // =============================================================
 // MIDDLEWARE GLOBAL
 // =============================================================
